@@ -24,6 +24,7 @@ app.get('/health', (req, res) => {
         message: 'SyncFlow API is healthy 🚀',
         env: config.NODE_ENV,
         timestamp: new Date().toISOString(),
+        tiemzone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 });
 
