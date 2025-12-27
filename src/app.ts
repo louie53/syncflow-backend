@@ -4,6 +4,7 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/env'; // 使用相对路径
 import authRoutes from './routes/auth.routes';
+import taskRoutes from './routes/task.routes'; // 👈 1. 引入新路由
 
 const app = express();
 
@@ -18,12 +19,12 @@ if (config.NODE_ENV === 'development') {
 }
 
 // --- 基础路由 ---
-app.get('/health', (req, res) => {
+app.get('/', (req, res) => {
     res.json({
         status: 'success',
         message: 'SyncFlow API is healthy 🚀',
         env: config.NODE_ENV,
-        timestamp: new Date().toISOString(),
+        timestamp: new Date().toLocaleString(),
         tiemzone: Intl.DateTimeFormat().resolvedOptions().timeZone,
     });
 });
@@ -32,5 +33,6 @@ app.get('/health', (req, res) => {
 // <--- 【2. 启用路由】
 // 以后凡是 '/api/auth' 开头的请求，都交给 authRoutes 处理
 app.use('/api/auth', authRoutes);
+app.use('/api/tasks', taskRoutes); // 👈 2. 挂载在这里
 
 export default app;
