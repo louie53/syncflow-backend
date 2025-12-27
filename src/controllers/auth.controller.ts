@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { StatusCodes } from 'http-status-codes'; // 刚刚装的工具
 import jwt from 'jsonwebtoken';
+import { AuthRequest } from '../middlewares/auth.middleware';
 import { User } from '../models/user.model'; // 引入刚才画的“图纸”
 
 /**
@@ -8,46 +9,46 @@ import { User } from '../models/user.model'; // 引入刚才画的“图纸”
  * Path: POST /api/auth/register
  */
 export const register = async (req: Request, res: Response): Promise<void> => {
-    try {
-        // 1. 接单：从请求体 (Body) 获取数据
-        const { email, password, firstName, lastName } = req.body;
+  try {
+    // 1. 接单：从请求体 (Body) 获取数据
+    const { email, password, firstName, lastName } = req.body;
 
-        // 2. 检查：这是不是回头客？(邮箱查重)
-        const existingUser = await User.findOne({ email });
+    // 2. 检查：这是不是回头客？(邮箱查重)
+    const existingUser = await User.findOne({ email });
 
-        if (existingUser) {
-            // 如果找到了，直接拒绝。409 Conflict (冲突)
-            res.status(StatusCodes.CONFLICT).json({ message: 'User already exists' });
-            return;
-        }
-
-        // 3. 烹饪：创建新用户
-        // ⚠️ 注意：今天先暂时明文存密码，明天 (Day 03) 我们会专门给这里加“加密层”！
-        const user = await User.create({
-            email,
-            password,
-            firstName,
-            lastName,
-        });
-
-        // 4. 上菜：返回成功信息
-        // 201 Created (已创建)
-        res.status(StatusCodes.CREATED).json({
-            message: 'User registered successfully!',
-            user: {
-                id: user._id,
-                email: user.email,
-                firstName: user.firstName,
-                lastName: user.lastName,
-                // 注意：这里我们没有返回 password，保护隐私
-            },
-        });
-
-    } catch (error) {
-        // 5. 兜底：万一数据库挂了，或者代码报错了
-        console.error('Register Error:', error);
-        res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error' });
+    if (existingUser) {
+      // 如果找到了，直接拒绝。409 Conflict (冲突)
+      res.status(StatusCodes.CONFLICT).json({ message: 'User already exists' });
+      return;
     }
+
+    // 3. 烹饪：创建新用户
+    // ⚠️ 注意：今天先暂时明文存密码，明天 (Day 03) 我们会专门给这里加“加密层”！
+    const user = await User.create({
+      email,
+      password,
+      firstName,
+      lastName,
+    });
+
+    // 4. 上菜：返回成功信息
+    // 201 Created (已创建)
+    res.status(StatusCodes.CREATED).json({
+      message: 'User registered successfully!',
+      user: {
+        id: user._id,
+        email: user.email,
+        firstName: user.firstName,
+        lastName: user.lastName,
+        // 注意：这里我们没有返回 password，保护隐私
+      },
+    });
+
+  } catch (error) {
+    // 5. 兜底：万一数据库挂了，或者代码报错了
+    console.error('Register Error:', error);
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Internal server error' });
+  }
 };
 
 // 👇👇👇 新增的 Login 逻辑 👇👇👇
@@ -57,16 +58,16 @@ export const login = async (req: Request, res: Response) => {
 
     // 1. 简单校验
     if (!email || !password) {
-       res.status(StatusCodes.BAD_REQUEST).json({ message: 'Email and password are required' });
-       return;
+      res.status(StatusCodes.BAD_REQUEST).json({ message: 'Email and password are required' });
+      return;
     }
 
     // 2. 找用户 (记得加 .select('+password') 把密码取出来比对)
     const user = await User.findOne({ email }).select('+password');
 
     if (!user) {
-       res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid credentials' });
-       return;
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid credentials' });
+      return;
     }
 
     // 3. 验证密码 (调用我们在 Model 里写的那个方法)
@@ -74,13 +75,13 @@ export const login = async (req: Request, res: Response) => {
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch) {
-       res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid credentials' });
-       return;
+      res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid credentials' });
+      return;
     }
 
     // 4. 签发 JWT (Token)
     const token = jwt.sign(
-      { userId: user._id }, 
+      { userId: user._id },
       process.env.JWT_SECRET || 'default_secret',
       { expiresIn: '1d' } // 有效期 1 天
     );
@@ -99,5 +100,30 @@ export const login = async (req: Request, res: Response) => {
 
   } catch (error) {
     res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Login failed', error });
+  }
+};
+
+// 👇 在文件末尾添加这个新方法
+export const getMe = async (req: Request, res: Response) => {
+  try {
+    // 1. 获取 ID
+    // 这里的 userId 是刚才中间件(保安)帮我们贴上去的
+    const userId = (req as AuthRequest).userId;
+
+    // 2. 查数据库
+    // 这里的 .select('-password') 意思是：除了密码，其他的都给我
+    // 虽然默认就是 select: false，但显式写出来是个好习惯
+    const user = await User.findById(userId).select('-password');
+
+    if (!user) {
+      res.status(StatusCodes.NOT_FOUND).json({ message: 'User not found' });
+      return;
+    }
+
+    // 3. 返回数据
+    res.status(StatusCodes.OK).json({ user });
+
+  } catch (error) {
+    res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error fetching profile', error });
   }
 };
