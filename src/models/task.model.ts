@@ -36,4 +36,4 @@ const taskSchema = new Schema<ITask>(
 );
 
 // 3. 导出模型
-export default mongoose.model<ITask>('Task', taskSchema);
+export const Task = mongoose.model<ITask>('Task', taskSchema);

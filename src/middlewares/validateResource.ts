@@ -7,6 +7,7 @@ const validateResource = (schema: AnyZodObject) => (req: Request, res: Response,
     try {
         // 🔍 核心动作：拿着规则去检查请求里的三个部分 (body, query, params)
         // 如果不合格，Zod 会直接抛出错误 (throw error)，进入 catch
+        // console.log('schema', schema)
         schema.parse({
             body: req.body,
             query: req.query,
