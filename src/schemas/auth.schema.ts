@@ -2,10 +2,15 @@ import { z } from 'zod';
 
 export const registerSchema = z.object({
     body: z.object({
-        // Name: 必填且长度大于2
-        name: z.string({
-            required_error: 'Name is required', // v3 支持这种直观写法
-        }).min(2, 'Name must be at least 2 characters long'),
+        // 🟢 新增 firstName
+        firstName: z.string({
+            required_error: 'First name is required',
+        }).min(1, 'First name cannot be empty'),
+
+        // 🟢 新增 lastName
+        lastName: z.string({
+            required_error: 'Last name is required',
+        }).min(1, 'Last name cannot be empty'),
 
         // Email: 必填且格式正确
         email: z.string({
