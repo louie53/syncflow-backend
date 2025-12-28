@@ -1,22 +1,34 @@
 import { Router } from 'express';
 import { createTask, deleteTask, getMyTasks, updateTask } from '../controllers/task.controller';
+
+// 👇 1. 修正导入方式：用花括号 { } 导入准确的名字
 import { authMiddleware } from '../middlewares/auth.middleware';
+
+// 👇 2. 引入验证中间件 (Zod)
+import validateResource from '../middlewares/validateResource';
+
+// 👇 3. 引入验证规则 (Schema)
+import { createTaskSchema, getTaskSchema, updateTaskSchema } from '../schemas/task.schema';
 
 const router = Router();
 
-// 🔒 关键一步：全员安检
-// 这行代码意味着：在这个文件里定义的任何路由，都会先经过 authMiddleware
-// 这样你就不用给每个接口单独加中间件了，非常省事！
+// 🔒 全局鉴权
+// 告诉 Express：这个文件里的所有路由，都要先过 authMiddleware 这一关
 router.use(authMiddleware);
 
-// 定义路由
-// 实际路径是: POST /api/tasks (因为我们在 app.ts 里会配前缀)
-router.post('/', createTask);
-router.get('/', getMyTasks);
-// 👇 新增：修改 (PUT /tasks/:id)
-router.put('/:id', updateTask);
-// 👇 新增：删除 (DELETE /tasks/:id)
-router.delete('/:id', deleteTask);
+// --- Routes ---
 
+// 1. 获取列表 (GET /)
+router.get('/', getMyTasks);
+
+// 2. 创建任务 (POST /) 
+// 流程：鉴权(顶层已做) -> 数据验证(这里做) -> Controller
+router.post('/', validateResource(createTaskSchema), createTask);
+
+// 3. 修改任务 (PUT /:id)
+router.put('/:id', validateResource(updateTaskSchema), updateTask);
+
+// 4. 删除任务 (DELETE /:id)
+router.delete('/:id', validateResource(getTaskSchema), deleteTask);
 
 export default router;
