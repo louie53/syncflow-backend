@@ -4,7 +4,7 @@ import jwt from 'jsonwebtoken';
 import { AuthRequest } from '../middlewares/auth.middleware';
 import { LoginInput, RegisterInput } from '../schemas/auth.schema';
 import { createUserService, findUserByEmailService, findUserByIdService } from '../services/auth.service';
-import { storeRefreshToken } from '../services/redis.service';
+import { deleteRefreshToken, getRefreshToken, storeRefreshToken } from '../services/redis.service';
 
 // 1. 注册 (Register)
 export const register = async (req: Request<{}, {}, RegisterInput>, res: Response) => {
@@ -99,5 +99,51 @@ export const getMe = async (req: Request, res: Response) => {
 
   } catch (e: any) {
     return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: 'Error fetching profile', error: e.message });
+  }
+};
+
+// 4. 刷新 Token (Refresh Token)
+export const refreshToken = async (req: Request, res: Response) => {
+  try {
+    const { token } = req.body;
+
+    if (!token) {
+      return res.status(StatusCodes.BAD_REQUEST).json({ message: 'Refresh token is required' });
+    }
+
+    // 1. 验证 Token 是否合法且未过期
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'default_secret') as { userId: string };
+
+    // 2. 检查 Redis 中是否存在且一致 (防止已登出或被禁用)
+    const storedToken = await getRefreshToken(payload.userId);
+    if (!storedToken || storedToken !== token) {
+      return res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid refresh token' });
+    }
+
+    // 3. 签发新的 Access Token
+    const newAccessToken = jwt.sign(
+      { userId: payload.userId },
+      process.env.JWT_SECRET || 'default_secret',
+      { expiresIn: '15m' }
+    );
+
+    return res.status(StatusCodes.OK).json({
+      accessToken: newAccessToken
+    });
+  } catch (e: any) {
+    return res.status(StatusCodes.UNAUTHORIZED).json({ message: 'Invalid or expired refresh token' });
+  }
+};
+
+// 5. 登出 (Logout)
+export const logout = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as AuthRequest).userId;
+    if (userId) {
+      await deleteRefreshToken(userId);
+    }
+    return res.status(StatusCodes.OK).json({ message: 'Logged out successfully' });
+  } catch (e: any) {
+    return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ message: e.message });
   }
 };

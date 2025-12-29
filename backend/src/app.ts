@@ -4,7 +4,8 @@ import helmet from 'helmet';
 import morgan from 'morgan';
 import { config } from './config/env'; // 使用相对路径
 import authRoutes from './routes/auth.routes';
-import taskRoutes from './routes/task.routes'; // 👈 1. 引入新路由
+import taskRoutes from './routes/task.routes';
+import workspaceRoutes from './routes/workspace.routes';
 
 const app = express();
 
@@ -38,5 +39,6 @@ app.get('/', (req, res) => {
 // 以后凡是 '/api/auth' 开头的请求，都交给 authRoutes 处理
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes); // 👈 2. 挂载在这里
+app.use('/api/workspaces', workspaceRoutes); // 👈 挂载 Workspace 路由
 
 export default app;

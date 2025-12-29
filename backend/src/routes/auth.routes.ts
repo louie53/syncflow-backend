@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { getMe, login, register } from '../controllers/auth.controller'; // 引入大厨
+import { getMe, login, logout, refreshToken, register } from '../controllers/auth.controller'; // 引入大厨
 import { authMiddleware } from '../middlewares/auth.middleware'; // 👈 导入中间件
 // 👇 1. 引入我们的通用安检员 (注意路径是 middlewares)
 import validateResource from '../middlewares/validateResource';
@@ -14,6 +14,8 @@ const router = Router();
 // 👇 3. 把中间件插进去：先安检(validate)，再办事(register/login)
 router.post('/register', validateResource(registerSchema), register);
 router.post('/login', validateResource(loginSchema), login);
+router.post('/refresh', refreshToken);
+router.post('/logout', authMiddleware, logout);
 
 // 👇 重点在这里！
 // 语法：router.get(路径, 中间件, 控制器)
